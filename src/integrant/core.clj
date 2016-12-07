@@ -71,8 +71,8 @@
 
 (defmethod halt-key! :default [_ v])
 
-(defn- update-key [m k]
-  (update m k (comp (partial init-key k) (partial expand-key m))))
+(defn- update-key [f m k]
+  (update m k (comp (partial f k) (partial expand-key m))))
 
 (defn init
   "Turn a config map into an system map. Keys are traversed in dependency
@@ -81,13 +81,15 @@
   ([config]
    (init config (keys config)))
   ([config keys]
+   (init config keys init-key))
+  ([config keys f]
    {:pre [(map? config)]}
    (when-let [refs (seq (missing-refs config))]
      (throw (ex-info (str "Missing definitions for refs: " (str/join ", " refs))
                      {:reason ::missing-refs
                       :config config
                       :missing-refs refs})))
-   (-> (reduce update-key config (sort-keys keys config))
+   (-> (reduce (partial update-key f) config (sort-keys keys config))
        (with-meta {::origin config}))))
 
 (defn halt!
