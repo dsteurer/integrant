@@ -104,15 +104,6 @@
 (defn- ambiguous-refs [config]
   (filter #(next (find-derived config %)) (find-refs config)))
 
-(defn- missing-refs [config]
-  (remove #(find-derived config %) (find-refs config)))
-
-(defn- resolve-ref [config ref]
-  (val (first (find-derived config (:key ref)))))
-
-(defn- expand-key [config value]
-  (walk/postwalk #(if (ref? %) (resolve-ref config %) %) value))
-
 (defn- find-keys [config keys f]
   (let [graph  (dependency-graph config)
         keyset (set (mapcat #(map key (find-derived config %)) keys))]
@@ -125,6 +116,16 @@
 
 (defn- reverse-dependent-keys [config keys]
   (reverse (find-keys config keys dep/transitive-dependents-set)))
+
+(defn- missing-refs [config keys]
+  (->> (find-refs (select-keys config (dependent-keys config keys)))
+       (remove #(find-derived config %))))
+
+(defn- resolve-ref [config ref]
+  (val (first (find-derived config (:key ref)))))
+
+(defn- expand-key [config value]
+  (walk/postwalk #(if (ref? %) (resolve-ref config %) %) value))
 
 (defn run!
   "Apply a side-effectful function f to each key value pair in a system map.
@@ -158,7 +159,7 @@
   {:pre [(map? config)]}
   (when-let [ref (first (ambiguous-refs config))]
     (throw (ambiguous-key-exception config ref (map key (find-derived config ref)))))
-  (when-let [refs (seq (missing-refs config))]
+  (when-let [refs (seq (missing-refs config keys))]
     (throw (missing-refs-exception config refs)))
   (-> (reduce (partial build-key f) config (dependent-keys config keys))
       (vary-meta assoc ::origin config)))
