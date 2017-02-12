@@ -24,16 +24,28 @@
     (ref? v)  (list (:key v))
     (coll? v) (mapcat find-refs v)))
 
+(defn find-derived
+  "Return a seq of all entries in a map, m, where the key is derived from the
+  keyword, k. If there are no matching keys, nil is returned."
+  [m k]
+  (seq (filter #(isa? (key %) k) m)))
+
 (defn dependency-graph
-  "Return a dependency graph of all the refs in a config."
+  "Return a dependency graph of all the refs in a config. Resolve derived
+  dependencies."
   [config]
-  (reduce-kv (fn [g k v] (reduce #(dep/depend %1 k %2) g (find-refs v)))
+  (reduce-kv (fn [g k v]
+               (->>
+                (find-refs v)
+                (mapcat (partial find-derived config))
+                (map key)
+                (reduce #(dep/depend %1 k %2) g)))
              (dep/graph)
              config))
 
 #?(:clj
    (defn read-string
-    "Read a config from a string of edn. Refs may be denotied by tagging keywords
+     "Read a config from a string of edn. Refs may be denoted by tagging keywords
      with #ref."
      ([s]
       (read-string {:eof nil} s))
@@ -78,12 +90,6 @@
            {:reason ::missing-refs
             :config config
             :missing-refs refs}))
-
-(defn find-derived
-  "Return a seq of all entries in a map, m, where the key is derived from the
-  keyword, k. If there are no matching keys, nil is returned."
-  [m k]
-  (seq (filter #(isa? (key %) k) m)))
 
 (defn find-derived-1
   "Return the map entry in a map, m, where the key is derived from the keyword,
