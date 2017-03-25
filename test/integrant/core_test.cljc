@@ -67,6 +67,17 @@
      (is (= (some-> 'integrant.test.foo/message find-var var-get) "foo"))
      (is (= (some-> 'integrant.test.bar/message find-var var-get) "bar"))))
 
+#?(:clj
+   (deftest load-namespaces-composite-key-test
+     (remove-lib 'integrant.test.foo)
+     (remove-lib 'integrant.test.bar)
+     (is (= (ig/load-namespaces {[:integrant.test/foo :integrant.test.bar/baz] 1})
+            '(integrant.test.foo integrant.test.bar)))
+     (is (some? (find-ns 'integrant.test.foo)))
+     (is (some? (find-ns 'integrant.test.bar)))
+     (is (= (some-> 'integrant.test.foo/message find-var var-get) "foo"))
+     (is (= (some-> 'integrant.test.bar/message find-var var-get) "bar"))))
+
 (derive ::p ::pp)
 (derive ::pp ::ppp)
 

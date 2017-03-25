@@ -105,6 +105,7 @@
      completion, a list of all loaded namespaces will be returned."
      [config]
      (doall (->> (keys config)
+                 (flatten)
                  (mapcat keyword->namespaces)
                  (distinct)
                  (keep try-require)))))
